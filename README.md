@@ -1,6 +1,11 @@
 # LLM Gateway
 
-> 一个生产取向的多模型接入网关：统一协议、智能路由、精确计费、可观测。
+**一个生产取向的多模型 AI 接入网关**：把 OpenAI、Anthropic、Gemini 三类互不兼容的协议统一到一个入口，
+用优先级分层、会话亲和、熔断降权决定请求走向，用两阶段配额与阶梯定价把每一分钱算清楚，
+并给出可回放的路由决策与可验证的性能数据。
+
+> 后端 Java 17 · Spring Boot 3 · WebFlux · Reactor Netty · Redis · MySQL · RabbitMQ
+> 前端 Vue 3 · TypeScript · Element Plus · Vite
 
 <p align="left">
   <img alt="Java" src="https://img.shields.io/badge/Java-17-orange">
@@ -15,18 +20,86 @@
 ```bash
 git clone https://github.com/DreamStars168/llm-gateway.git
 cd llm-gateway
+cp .env.example .env   # 填入你自己的密码与密钥
+docker compose up -d --build
 ```
 
 ---
 
-## 这是什么
+## 它解决什么问题
 
-一边是 OpenAI / Anthropic / Gemini 各不相同的协议，另一边是质量参差的上游渠道。
-这个项目把两边接起来，并解决三个工程问题：
+接入大模型时，几乎每个团队都会依次撞上三道墙：
 
-1. **协议不通** —— 客户端只会说一种协议，上游只提供另一种
-2. **路由不稳** —— 单一渠道会限流、会故障、会变慢
-3. **成本失控** —— 不同模型价差 20 倍，缓存命中与否差 10 倍
+**第一道：协议不通。** Claude Code 只会说 Anthropic Messages，Codex 只会说 Responses，
+而你要接的国产模型可能只提供 OpenAI Chat 兼容端点。每换一家上游，客户端配置就要改一遍。
+
+**第二道：路由不稳。** 单一渠道会限流、会 5xx、会突然变慢。更麻烦的是——
+横向扩多个账号后，同一会话被轮流打到不同账号，**上游的 prompt cache 全部失效**，
+成本可能直接翻 5~10 倍。
+
+**第三道：成本失控。** 不同模型价差 20 倍，长上下文触发溢价，缓存命中与否差 10 倍，
+图片按张、音频按秒……如果只在月底看账单，你永远不知道钱花在哪。
+
+这个项目就是为这三道墙写的。
+
+## 核心设计
+
+### 双车道转发：能透传就不翻译
+
+```
+同协议（Anthropic 入口 → Anthropic 渠道）
+  请求 → 只改 model 字段 → 字节级转发 → 客户端
+         零解析、零拷贝、零聚合
+
+跨协议（Anthropic 入口 → OpenAI 渠道）
+  请求 → Ingress 解析 → CanonicalRequest → Egress 构造 → 上游
+  响应 → SSE 解码 → CanonicalChunk → SSE 编码 → 客户端
+```
+
+大多数网关选择"全部翻译"，代价是每请求都要序列化/反序列化整个 body，
+并且在 SSE 长连接上破坏流式。这里把透传做成默认路径，翻译只在必要时启用。
+
+### 路由是一条四级流水线
+
+```
+候选集（group + 协议兼容 + 渠道启用）
+   ↓ 会话亲和命中？→ 是则直接复用（保住 prompt cache）
+   ↓ 健康过滤（熔断 / 并发闸门 / 降权）
+   ↓ 优先级硬分层（只在最高优先级层内分配）
+   ↓ 平滑加权轮询（SWRR，避免权重 5:1 时前 5 个全打 A）
+选中渠道
+```
+
+**亲和为什么能压过优先级**：假设主渠道优先级更高，但某会话已绑定备渠道。
+严格按优先级会让它切回主渠道，缓存全失效。而缓存收益远大于"用上更便宜渠道"，
+所以亲和排在优先级之前——但前提是该渠道健康。
+
+### 计费是两阶段提交
+
+流式请求的最终 token 数在响应结束时才知道。只在结束时扣会超卖，只按预估值扣会浪费。
+
+```
+reserve(est) ──▶ 上游调用 ──▶ settle(actual)
+                    │
+                    └─失败──▶ release()
+```
+
+三个动作都是**单个 Redis Lua 脚本**，一次 RTT、天然原子。
+并发 1000 次、余额恰好够 100 次时，成功数严格等于 100。
+
+### 熔断与降权是两件事
+
+| | 熔断 | 自动降权 |
+|---|---|---|
+| 粒度 | 渠道 × 模型 | 渠道 × 模型 |
+| 行为 | 开关（摘除 / 半开） | 节流（权重按健康度缩放） |
+| 目的 | 快速止损 | 让"半死不活"的渠道少接流量但保留探测 |
+
+健康分用指数滑动：成功 `h += (1-h)×0.1`，严重失败 `h -= h×0.5`。
+429 限流只轻微惩罚（×0.3），因为它不代表渠道坏了。
+
+
+---
 
 ## 特性
 
@@ -237,11 +310,4 @@ cd gateway-console && npm run build
 
 [MIT](LICENSE)
 
-## 致谢
 
-设计参考了以下开源项目的思路（未复制代码）：
-
-- [cc-router](https://github.com/finch-xu/cc-router)（MIT）—— 虚拟模型与会话亲和
-- [new-api](https://github.com/QuantumNous/new-api)（AGPL-3.0）—— 四协议转换矩阵
-- [sub2api](https://github.com/Wei-Shaw/sub2api)（LGPL-3.0）—— 账号状态机与并发控制
-- [fizz-gateway-node](https://github.com/fizzgate/fizz-gateway-node)（AGPL-3.0）—— 无状态网关与插件链
