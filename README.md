@@ -237,47 +237,35 @@ curl -N http://localhost:18081/v1/messages \
 | 计费精度 | Claude 23+9 token → 204 micro（理论值一致） |
 | 多模态 | 1 张图 + 23/9 token → 40204 micro（204 + 40000） |
 
-完整报告见 [docs/09-压测验收报告.md](docs/09-压测验收报告.md)。
+完整数据与瓶颈分析见 [04-运维与压测](docs/04-运维与压测.md)。
 
 > **诚实说明**：50 并发时 P99 升至 ~19ms（Redis 单连接排队）。
-> 简历/宣传中不应声称 1000 并发，本项目实测上限为 200 并发零错误。
+> 本项目实测上限为 200 并发零错误，不对更高并发做承诺。
 
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
-| [01-总体架构](docs/01-总体架构.md) | 分层、关键决策、时序、延迟预算 |
-| [02-协议适配层](docs/02-协议适配层.md) | IR、4×4 转换矩阵、字段映射、SSE 规则 |
-| [03-路由调度与高可用](docs/03-路由调度与高可用.md) | 四级流水线、SWRR、熔断状态机 |
-| [04-配额计费与数据模型](docs/04-配额计费与数据模型.md) | 定价、三态配额、Lua、DDL |
-| [05-API契约与Playground](docs/05-API契约与Playground.md) | 对外/管理端 API |
-| [06-实施路线与压测验收](docs/06-实施路线与压测验收.md) | 里程碑、压测方案 |
-| [07-可观测性与运维](docs/07-可观测性与运维.md) | 指标、日志、告警 |
-| [08-参考项目对照](docs/08-参考项目对照与借鉴边界.md) | 能力矩阵、许可合规 |
-| [09-压测验收报告](docs/09-压测验收报告.md) | 实测数据、缺陷复盘 |
-| [10-亲和定价与Prompt版本](docs/10-亲和定价与Prompt版本.md) | 三项核心能力 |
-| [11-Gemini协议适配](docs/11-Gemini协议适配.md) | 三协议差异与实现 |
+| [01-架构设计](docs/01-架构设计.md) | 分层、关键决策、时序、延迟预算 |
+| [02-协议适配](docs/02-协议适配.md) | IR 模型、三协议差异矩阵、SSE 处理 |
+| [03-路由与计费](docs/03-路由与计费.md) | 调度算法、亲和、熔断、降权、配额与定价 |
+| [04-运维与压测](docs/04-运维与压测.md) | 指标、日志、告警、压测数据与瓶颈分析 |
+| [05-设计参考](docs/05-设计参考.md) | 参考项目与差异说明 |
 | [RUNBOOK](RUNBOOK.md) | 启动、验证、故障演练 |
 
 ## 项目结构
 
 ```
-llm-gateway/
-├── gateway-server/          # 后端（Spring Boot + WebFlux）
-│   └── src/main/java/com/zhouyu/gateway/
-│       ├── auth/            # API Key 鉴权
-│       ├── billing/         # 定价与成本计算
-│       ├── protocol/        # 协议适配（IR + 三协议）
-│       ├── relay/           # 转发管线
-│       ├── routing/         # 路由、亲和、熔断、降权
-│       ├── quota/           # 两阶段配额
-│       ├── usage/           # MQ 异步落库
-│       └── admin/           # 管理端 API
-├── gateway-console/         # 前端（Vue 3 + TS + Element Plus）
-├── mock-upstream/           # Mock 上游（三协议）
-├── db/                      # schema.sql + Lua 脚本
-├── scripts/                 # 压测工具
-└── docs/                    # 设计文档
+gateway-server/    后端（Spring Boot + WebFlux）
+  ├── protocol/    协议适配（IR + 三协议）
+  ├── routing/     路由、亲和、熔断、降权
+  ├── quota/       两阶段配额
+  └── usage/       MQ 异步落库
+gateway-console/   前端（Vue 3 + TS + Element Plus）
+mock-upstream/     Mock 上游（三协议）
+db/                schema.sql + Lua 脚本
+scripts/           压测工具
+docs/              设计文档
 ```
 
 ## 开发
@@ -309,5 +297,6 @@ cd gateway-console && npm run build
 ## 许可证
 
 [MIT](LICENSE)
+
 
 

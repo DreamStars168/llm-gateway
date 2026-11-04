@@ -205,7 +205,7 @@ node scripts/measure-overhead.mjs --mode direct  --concurrency 20 --samples 400
 node scripts/measure-overhead.mjs --mode gateway --concurrency 20 --samples 400
 ```
 
-实测结果见 [docs/09-压测验收报告.md](docs/09-压测验收报告.md)。
+实测结果见 [docs/04-运维与压测.md](docs/04-运维与压测.md)。
 
 ---
 
@@ -234,6 +234,7 @@ node scripts/measure-overhead.mjs --mode gateway --concurrency 20 --samples 400
 | SQL 报语法错误 | 用了保留字 `stream` | 列名已改为 `gateway_stream` |
 | 压测出现 500 | Redis 超时 | 已调至 500ms + FAIL_OPEN 降级 |
 | 附加延迟测出 1.8s | 测量脚本两轮互相污染 | 用 `--mode direct/gateway` 分离测量 |
+
 
 
 
