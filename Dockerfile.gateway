@@ -1,0 +1,17 @@
+# ---- build stage ----
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /src
+COPY pom.xml .
+COPY gateway-server/pom.xml gateway-server/
+COPY mock-upstream/pom.xml mock-upstream/
+RUN mvn -q -B -pl gateway-server -am dependency:go-offline || true
+COPY gateway-server gateway-server
+RUN mvn -q -B -pl gateway-server -am package -DskipTests
+
+# ---- runtime stage ----
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /src/gateway-server/target/gateway-server-*.jar app.jar
+EXPOSE 18081
+ENV JAVA_OPTS="-Xms512m -Xmx2g -XX:+UseZGC -XX:MaxDirectMemorySize=512m"
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

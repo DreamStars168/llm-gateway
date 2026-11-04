@@ -1,0 +1,204 @@
+server:
+  port: ${SERVER_PORT:18081}
+  netty:
+    connection-timeout: 5s
+
+spring:
+  application:
+    name: llm-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      # 预扣是每请求一次同步调用，超时必须短，但也不能短到把突发流量全判失败。
+      # 500ms 配合下方连接池，可覆盖瞬时排队。
+      timeout: 500ms
+      lettuce:
+        pool:
+          enabled: true
+          max-active: 64
+          max-idle: 32
+          min-idle: 8
+          max-wait: 500ms
+        shutdown-timeout: 200ms
+  rabbitmq:
+    host: ${RABBIT_HOST:127.0.0.1}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER:gateway}
+    # 无默认值：未设置环境变量时启动失败，避免把演示密码带到生产
+    password: ${RABBIT_PASS}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 32
+        default-requeue-rejected: false
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/gateway?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    username: ${MYSQL_USER:root}
+    # 无默认值：必须通过环境变量提供
+    password: ${MYSQL_PASS}
+    hikari:
+      maximum-pool-size: 16
+      minimum-idle: 4
+      connection-timeout: 3000
+  codec:
+    max-in-memory-size: 64MB
+
+gateway:
+  name: llm-gateway
+  max-concurrent-streams: 8000
+  upstream-first-byte-timeout: 60s
+  upstream-idle-timeout: 120s
+  retry-max: 2
+  admin:
+    # 管理端账号与密钥：必须通过环境变量提供，无默认值（启动时会校验）
+    #   ADMIN_USERNAME      管理端用户名
+    #   ADMIN_PASSWORD      明文或 BCrypt 哈希（长度 >= 8）
+    #   ADMIN_JWT_SECRET    JWT 密钥（>= 32 字节，可用 openssl rand -hex 32 生成）
+    username: ${ADMIN_USERNAME:}
+    password: ${ADMIN_PASSWORD:}
+    jwt-secret: ${ADMIN_JWT_SECRET:}
+    jwt-expire-minutes: 120
+  quota-enabled: true
+  quota:
+    # 租约预取：一次向 Redis 预扣 N 份额度缓存在本地，
+    # 把「每请求 1 次 RTT」降为「每 N 请求 1 次 RTT」。
+    # lease-size 越大，附加延迟越低，但单实例故障时占用的额度越多。
+    lease-size: 20
+    unit-micro: 1000000          # 每份 1 USD（micro-USD）
+    lease-ttl-seconds: 60
+  sticky:
+    # 会话亲和：同一会话钉在同一渠道，保住上游 prompt cache（成本可降 5~10 倍）
+    ttl-seconds: 1800          # Redis 侧 TTL（滑动续期）
+    local-ttl-seconds: 60      # 本地一级缓存 TTL（跨实例不一致的最大窗口）
+  dynamic-weight:
+    # 自动降权：健康度差的渠道被压低权重但不完全摘除（保留探测流量以便自愈）
+    # 与熔断的区别：熔断是开关（0/1），降权是节流（0.05~1.0 的连续调节）
+    enabled: true
+    min-ratio: 0.05            # 最差也保留 5% 流量用于探测
+    penalize-step: 0.5         # 单次严重失败健康分衰减 50%
+    recover-step: 0.1          # 单次成功健康分回升 10%
+    idle-reset-seconds: 300    # 空闲 5 分钟后开始缓慢回归
+
+  # ── 上游渠道 ────────────────────────────────────────────────
+  channels:
+    - id: 1
+      name: anthropic-main
+      protocol: ANTHROPIC
+      base-url: ${UPSTREAM_BASE_URL:http://127.0.0.1:9000}
+      api-key: ${UPSTREAM_API_KEY:sk-ant-mock-local}
+      priority: 10
+      weight: 100
+      max-inflight: 200
+      timeout: 60s
+      passthrough: true
+      enabled: true
+
+    - id: 2
+      name: anthropic-backup
+      protocol: ANTHROPIC
+      base-url: ${UPSTREAM_BACKUP_URL:http://127.0.0.1:9001}
+      api-key: ${UPSTREAM_BACKUP_KEY:sk-ant-mock-local-2}
+      priority: 20
+      weight: 100
+      max-inflight: 200
+      timeout: 60s
+      passthrough: true
+      enabled: true
+
+    # OpenAI 协议渠道：用于验证「Anthropic 入口 → OpenAI 出口」的翻译链路
+    - id: 3
+      name: openai-mock
+      protocol: OPENAI_CHAT
+      base-url: ${UPSTREAM_OPENAI_URL:http://127.0.0.1:9000}
+      api-key: ${UPSTREAM_OPENAI_KEY:sk-openai-mock-local}
+      priority: 10
+      weight: 100
+      max-inflight: 200
+      timeout: 60s
+      passthrough: true
+      enabled: true
+
+    # Gemini 协议渠道：验证 Anthropic 入口 → Gemini 出口的翻译链路
+    - id: 4
+      name: gemini-mock
+      protocol: GEMINI
+      base-url: ${UPSTREAM_GEMINI_URL:http://127.0.0.1:9000}
+      api-key: ${UPSTREAM_GEMINI_KEY:AIza-mock-local}
+      priority: 10
+      weight: 100
+      max-inflight: 200
+      timeout: 60s
+      passthrough: false
+      enabled: true
+      api-key-in-query: false
+
+  # ── 虚拟模型路由 ────────────────────────────────────────────
+  routes:
+    - virtual-model: claude-sonnet-4
+      channel-id: 1
+      upstream-model: claude-sonnet-4-20250514
+      priority: 10
+      weight: 100
+      price-ratio: 1.0
+      enabled: true
+
+    - virtual-model: claude-sonnet-4
+      channel-id: 2
+      upstream-model: claude-sonnet-4-20250514
+      priority: 20
+      weight: 100
+      price-ratio: 1.0
+      enabled: true
+
+    - virtual-model: claude-haiku-4
+      channel-id: 1
+      upstream-model: claude-haiku-4-20250514
+      priority: 10
+      weight: 100
+      price-ratio: 0.2
+      enabled: true
+
+    # 走 OpenAI 协议渠道的虚拟模型（触发翻译慢车道）
+    - virtual-model: gpt-4o-mini
+      channel-id: 3
+      upstream-model: gpt-4o-mini
+      priority: 10
+      weight: 100
+      price-ratio: 1.0
+      enabled: true
+
+    # 走 Gemini 协议渠道的虚拟模型（触发 Gemini 翻译慢车道）
+    - virtual-model: gemini-2.5-pro
+      channel-id: 4
+      upstream-model: gemini-2.5-pro
+      priority: 10
+      weight: 100
+      price-ratio: 1.0
+      enabled: true
+
+  # ── 客户端 Key（演示用；生产从 DB 加载且只存哈希）──────────────
+  keys:
+    - id: 1001
+      # 演示用客户端 Key；生产应从数据库加载，且只存哈希
+      secret: ${DEMO_API_KEY:sk-lg-demo-key-local}
+      tenant-id: 1
+      group-id: 1
+      balance-micro: 100000000   # 100 USD
+      rpm-limit: 600
+
+logging:
+  level:
+    root: INFO
+    com.zhouyu.gateway: DEBUG
+    org.springframework.data.redis: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+

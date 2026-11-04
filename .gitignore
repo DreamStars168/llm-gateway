@@ -1,0 +1,74 @@
+# ── 构建产物 ──────────────────────────────────────────────
+target/
+dist/
+build/
+*.jar
+*.war
+*.class
+
+# ── 依赖 ──────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ── 本地工具链（不要提交便携版 Maven）────────────────────
+.tools/
+
+# ── IDE / 编辑器 ─────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# 注意：.vscode/ 和 .idea/ 整个忽略，但保留推荐配置可显式放行，例如：
+# !.vscode/extensions.json
+
+# ── 操作系统 ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── 日志 / 临时文件 ──────────────────────────────────────
+*.log
+logs/
+*.pid
+*.err
+dev.log
+dev.err
+npm-debug.log*
+yarn-error.log*
+
+# ── 本地配置与密钥（重要）────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.local.yml
+application-local.yml
+application-local.yaml
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+
+# ── 运行时数据 ────────────────────────────────────────────
+data/
+mysql_data/
+redis_data/
+*.sqlite
+*.db
+
+# ── 测试与覆盖率 ─────────────────────────────────────────
+coverage/
+.nyc_output/
+*.hprof
+heapdump*
+
+# ── 截图与演示临时文件 ───────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+!docs/images/**

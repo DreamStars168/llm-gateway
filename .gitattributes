@@ -1,0 +1,19 @@
+# 统一行尾，避免 Windows/Linux 协作时整文件 diff
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.zip binary
+
+# Windows 脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell 脚本与 Dockerfile 必须 LF（否则容器内执行失败）
+*.sh text eol=lf
+Dockerfile* text eol=lf

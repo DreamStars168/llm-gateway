@@ -1,0 +1,98 @@
+{
+  "_comment": "价格单位：USD / 1M tokens。数据参考各厂商公开报价（2025 年初），仅用于演示。",
+  "models": {
+    "claude-sonnet-4": {
+      "tiers": [
+        {
+          "inputTokensLte": 200000,
+          "input": "3.0",
+          "output": "15.0",
+          "cacheWrite": "3.75",
+          "cacheRead": "0.30"
+        },
+        {
+          "inputTokensLte": null,
+          "input": "6.0",
+          "output": "22.5",
+          "cacheWrite": "7.50",
+          "cacheRead": "0.60"
+        }
+      ],
+      "channelMultiplier": "1.0",
+      "groupDiscount": "1.0",
+      "multimodal": {
+        "imagePerUnit": "0.04",
+        "audioPerSecond": "0.0001"
+      }
+    },
+    "claude-haiku-4": {
+      "tiers": [
+        {
+          "inputTokensLte": 200000,
+          "input": "0.80",
+          "output": "4.0",
+          "cacheWrite": "1.0",
+          "cacheRead": "0.08"
+        }
+      ],
+      "channelMultiplier": "1.0",
+      "groupDiscount": "1.0"
+    },
+    "gpt-4o-mini": {
+      "tiers": [
+        {
+          "inputTokensLte": 128000,
+          "input": "0.15",
+          "output": "0.60",
+          "cacheWrite": "0.0",
+          "cacheRead": "0.075"
+        }
+      ],
+      "channelMultiplier": "1.0",
+      "groupDiscount": "1.0",
+      "multimodal": {
+        "imagePerUnit": "0.04",
+        "audioPerSecond": "0.0001"
+      }
+    },
+    "deepseek-chat": {
+      "tiers": [
+        {
+          "inputTokensLte": null,
+          "input": "0.27",
+          "output": "1.10",
+          "cacheWrite": "0.0",
+          "cacheRead": "0.07"
+        }
+      ],
+      "channelMultiplier": "1.0",
+      "groupDiscount": "1.0",
+      "multimodal": {
+        "imagePerUnit": "0.03",
+        "audioPerSecond": "0.0001"
+      }
+    },
+    "gemini-2.5-pro": {
+      "tiers": [
+        {
+          "inputTokensLte": 200000,
+          "input": "1.25",
+          "output": "10.0",
+          "cacheWrite": "0.0",
+          "cacheRead": "0.31"
+        },
+        {
+          "inputTokensLte": null,
+          "input": "2.50",
+          "output": "15.0",
+          "cacheWrite": "0.0",
+          "cacheRead": "0.62"
+        }
+      ],
+      "channelMultiplier": "1.0",
+      "groupDiscount": "1.0"
+    }
+  }
+}
+
+

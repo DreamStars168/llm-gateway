@@ -1,0 +1,16 @@
+# ---- build stage ----
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /src
+COPY pom.xml .
+COPY gateway-server/pom.xml gateway-server/
+COPY mock-upstream/pom.xml mock-upstream/
+RUN mvn -q -B -pl mock-upstream -am dependency:go-offline || true
+COPY mock-upstream mock-upstream
+RUN mvn -q -B -pl mock-upstream -am package -DskipTests
+
+# ---- runtime stage ----
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /src/mock-upstream/target/mock-upstream-*.jar app.jar
+EXPOSE 9000
+ENTRYPOINT ["sh", "-c", "java -Xmx512m -jar app.jar"]

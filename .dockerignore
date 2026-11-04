@@ -1,0 +1,40 @@
+# 构建产物
+target/
+dist/
+build/
+*.jar
+
+# 依赖
+node_modules/
+
+# 本地工具链
+.tools/
+
+# 版本控制
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+
+# 文档与示例（不参与镜像构建）
+docs/
+*.md
+!README.md
+LICENSE
+CONTRIBUTING.md
+
+# 本地配置与密钥（重要：绝不进入镜像）
+.env
+.env.local
+*.local.yml
+secrets/
+*.pem
+*.key
+
+# 测试与临时
+*.log
+coverage/
+.github/
