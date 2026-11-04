@@ -7,8 +7,15 @@
   <img alt="Spring Boot" src="https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen">
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3%20+%20TS-42b883">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-blue">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-74%20passed-success">
+  <a href="https://github.com/DreamStars168/llm-gateway/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/DreamStars168/llm-gateway/actions/workflows/ci.yml/badge.svg">
+  </a>
 </p>
+
+```bash
+git clone https://github.com/DreamStars168/llm-gateway.git
+cd llm-gateway
+```
 
 ---
 
