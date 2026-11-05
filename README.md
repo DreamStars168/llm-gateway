@@ -12,13 +12,13 @@
   <img alt="Spring Boot" src="https://img.shields.io/badge/Spring%20Boot-3.3-brightgreen">
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3%20+%20TS-42b883">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-blue">
-  <a href="https://github.com/DreamStars168/llm-gateway/actions/workflows/ci.yml">
-    <img alt="CI" src="https://github.com/DreamStars168/llm-gateway/actions/workflows/ci.yml/badge.svg">
+  <a href="https://github.com/Sakurasign/llm-gateway/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/Sakurasign/llm-gateway/actions/workflows/ci.yml/badge.svg">
   </a>
 </p>
 
 ```bash
-git clone https://github.com/DreamStars168/llm-gateway.git
+git clone https://github.com/Sakurasign/llm-gateway.git
 cd llm-gateway
 cp .env.example .env   # 填入你自己的密码与密钥
 docker compose up -d --build
@@ -297,6 +297,7 @@ cd gateway-console && npm run build
 ## 许可证
 
 [MIT](LICENSE)
+
 
 
 
